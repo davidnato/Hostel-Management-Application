@@ -1,17 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'register_screen.dart';
-import 'user_home_page.dart';
-import 'admin_page.dart';
+import 'user_home_screen.dart';
+import 'admin_screen.dart';
 
-class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+class Login extends StatefulWidget {
+  const Login({super.key, required this.title});
+  final String title;
 
   @override
-  _LoginScreenState createState() => _LoginScreenState();
+  State<Login> createState() => _LoginState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
+class _LoginState extends State<Login> {
   final _formKey = GlobalKey<FormState>();
   TextEditingController emailController = TextEditingController();
   TextEditingController passwordController = TextEditingController();
@@ -38,7 +39,6 @@ class _LoginScreenState extends State<LoginScreen> {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     await prefs.remove('email');
     await prefs.remove('password');
-    await prefs.remove('username');
     emailController.clear();
     passwordController.clear();
   }
@@ -47,7 +47,7 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Log In'),
+        title: Text(widget.title),
       ),
       body: Form(
         key: _formKey,
@@ -107,15 +107,17 @@ class _LoginScreenState extends State<LoginScreen> {
                           // Check for user credentials
                           List<String>? userStrings = prefs.getStringList('users');
                           bool isValidUser = false;
-                          for (var user in userStrings!) {
-                            var details = user.split(',');
-                            if (details[1] == emailController.text &&
-                                details[2] == passwordController.text) {
-                              isValidUser = true;
-                              break;
+                          if (userStrings != null) {
+                            for (var user in userStrings) {
+                              var details = user.split(',');
+                              if (details[1] == emailController.text &&
+                                  details[2] == passwordController.text) {
+                                isValidUser = true;
+                                break;
+                              }
                             }
                           }
-                        
+
                           if (isValidUser) {
                             await _saveCredentials(
                                 emailController.text, passwordController.text);
@@ -146,7 +148,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 onPressed: () {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (context) => const RegisterScreen()),
+                    MaterialPageRoute(builder: (context) => const Register()),
                   );
                 },
                 child: const Text('Register'),
