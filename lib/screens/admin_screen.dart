@@ -11,6 +11,7 @@ class AdminPage extends StatefulWidget {
 class _AdminPageState extends State<AdminPage> with SingleTickerProviderStateMixin {
   List<Map<String, String>> users = [];
   List<Map<String, String>> hostels = [];
+  List<Map<String, String>> requests = []; // New list for requests
   final _formKey = GlobalKey<FormState>();
   TextEditingController blockNameController = TextEditingController();
   TextEditingController roomTypeController = TextEditingController();
@@ -20,9 +21,10 @@ class _AdminPageState extends State<AdminPage> with SingleTickerProviderStateMix
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this); // Updated tab length to 2
+    _tabController = TabController(length: 3, vsync: this); // Updated tab length to 3
     _loadUsers();
     _loadHostels();
+    _loadRequests(); // Load requests
   }
 
   Future<void> _loadUsers() async {
@@ -57,13 +59,50 @@ class _AdminPageState extends State<AdminPage> with SingleTickerProviderStateMix
     });
   }
 
+  Future<void> _loadRequests() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    List<String>? requestStrings = prefs.getStringList('requests') ?? [];
+    setState(() {
+      requests = requestStrings.map((request) {
+        var details = request.split(',');
+        return {
+          'requester': details[0],
+          'hostel': details[1],
+          'status': details[2],
+        };
+      }).toList();
+    });
+  }
+
+  Future<void> _updateRequestStatus(String requestDetails, String newStatus) async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    List<String>? requestStrings = prefs.getStringList('requests') ?? [];
+    for (int i = 0; i < requestStrings.length; i++) {
+      if (requestStrings[i].startsWith(requestDetails)) {
+        var details = requestStrings[i].split(',');
+        requestStrings[i] = '${details[0]},${details[1]},$newStatus';
+        break;
+      }
+    }
+    await prefs.setStringList('requests', requestStrings);
+    _loadRequests(); // Refresh the list after updating
+  }
+
+  Future<void> _deleteRequest(String requestDetails) async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    List<String>? requestStrings = prefs.getStringList('requests') ?? [];
+    requestStrings.removeWhere((request) => request.startsWith(requestDetails));
+    await prefs.setStringList('requests', requestStrings);
+    _loadRequests(); // Refresh the list after deleting
+  }
+
   Future<void> _updateHostelStatus(String hostelDetails, String newStatus, [String occupant = '']) async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     List<String>? hostelStrings = prefs.getStringList('hostels') ?? [];
     for (int i = 0; i < hostelStrings.length; i++) {
       if (hostelStrings[i].startsWith(hostelDetails)) {
         var details = hostelStrings[i].split(',');
-        hostelStrings[i] = '${details[0]},${details[1]},${details[2]},$newStatus,${occupant}';
+        hostelStrings[i] = '${details[0]},${details[1]},${details[2]},$newStatus,$occupant';
         break;
       }
     }
@@ -89,6 +128,7 @@ class _AdminPageState extends State<AdminPage> with SingleTickerProviderStateMix
           tabs: const [
             Tab(text: 'Users'),
             Tab(text: 'Hostels'),
+            Tab(text: 'Requests'), // New tab for requests
           ],
         ),
       ),
@@ -135,6 +175,10 @@ class _AdminPageState extends State<AdminPage> with SingleTickerProviderStateMix
                               _deleteHostel(hostelDetails);
                             } else if (value == 'Make Vacant') {
                               _updateHostelStatus(hostelDetails, 'available');
+                            } else if (value == 'Accept') {
+                              _updateHostelStatus(hostelDetails, 'occupied');
+                            } else if (value == 'Reject') {
+                              _updateHostelStatus(hostelDetails, 'rejected');
                             }
                           },
                           itemBuilder: (BuildContext context) {
@@ -142,6 +186,14 @@ class _AdminPageState extends State<AdminPage> with SingleTickerProviderStateMix
                               const PopupMenuItem<String>(
                                 value: 'Delete',
                                 child: Text('Delete'),
+                              ),
+                              const PopupMenuItem<String>(
+                                value: 'Accept',
+                                child: Text('Accept'),
+                              ),
+                              const PopupMenuItem<String>(
+                                value: 'Reject',
+                                child: Text('Reject'),
                               ),
                               if (hostel['status'] == 'occupied')
                                 const PopupMenuItem<String>(
@@ -210,6 +262,48 @@ class _AdminPageState extends State<AdminPage> with SingleTickerProviderStateMix
                       ),
                     ],
                   ),
+                ),
+              ),
+            ],
+          ),
+          // Requests Tab
+          Column(
+            children: [
+              Expanded(
+                child: ListView.builder(
+                  itemCount: requests.length,
+                  itemBuilder: (context, index) {
+                    final request = requests[index];
+                    return Card(
+                      margin: const EdgeInsets.all(8),
+                      child: ListTile(
+                        title: Text('Requester: ${request['requester']}'),
+                        subtitle: Text('Hostel: ${request['hostel']} (Status: ${request['status']})'),
+                        trailing: PopupMenuButton<String>(
+                          onSelected: (String value) {
+                            final requestDetails = '${request['requester']},${request['hostel']}';
+                            if (value == 'Accept') {
+                              _updateRequestStatus(requestDetails, 'accepted');
+                            } else if (value == 'Reject') {
+                              _updateRequestStatus(requestDetails, 'rejected');
+                            }
+                          },
+                          itemBuilder: (BuildContext context) {
+                            return [
+                              const PopupMenuItem<String>(
+                                value: 'Accept',
+                                child: Text('Accept'),
+                              ),
+                              const PopupMenuItem<String>(
+                                value: 'Reject',
+                                child: Text('Reject'),
+                              ),
+                            ];
+                          },
+                        ),
+                      ),
+                    );
+                  },
                 ),
               ),
             ],

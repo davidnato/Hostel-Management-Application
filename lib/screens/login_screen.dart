@@ -96,8 +96,8 @@ class _LoginState extends State<Login> {
                         String savedPassword = prefs.getString('password') ?? '';
 
                         // Check for admin credentials
-                        if (emailController.text == "wanyamanato254@gmail.com" &&
-                            passwordController.text == "12345678") {
+                        if (emailController.text == "admin@gmail.com" &&
+                            passwordController.text == "admin") {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
